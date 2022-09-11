@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<title>WebSocket Test</title>
+	</head>
+	<body>
+		<div id="received">
+			<h2>Received Messages:</h2>
+		</div>
+		<form>
+			<input type="text" id="message" />
+			<input type="submit" value="Send" />
+		</form>
+
+		<script>
+			const received = document.getElementById("received");
+			const form = document.querySelector("form");
+
+			const socket = new WebSocket("ws://127.0.0.1:8000", "rust-websocket");
+			socket.onmessage = function (event) {
+				const data = JSON.parse(event.data);
+
+				console.log(data);
+
+				if ("MessageS2C" in data) {
+					const message = data["MessageS2C"];
+
+					const p = document.createElement("p");
+					p.innerHTML = `<em>(${new Date(
+						message.timestamp
+					).toLocaleTimeString()})</em> <strong>${message.username}: </strong>${
+						message.text
+					}`;
+					received.appendChild(p);
+				}
+			};
+
+			form.addEventListener("submit", (evt) => {
+				evt.preventDefault();
+
+				const input = document.querySelector("#message");
+				socket.send(
+					JSON.stringify({
+						MessageC2S: {
+							text: input.value,
+						},
+					})
+				);
+				input.value = "";
+			});
+		</script>
+	</body>
+</html>
