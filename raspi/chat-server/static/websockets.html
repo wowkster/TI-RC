@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title>WebSocket Test</title>
+    </head>
+    <body>
+        <form>
+            <input type="text" id="message" disabled />
+            <input type="submit" value="Send" disabled />
+        </form>
+        <div id="error" style="display: none; color: red">
+            Could not connect to the chat server!
+        </div>
+        <div id="loading">Loading...</div>
+        <div id="received" style="display: none">
+            <h2>Received Messages:</h2>
+        </div>
+
+        <script>
+            const error = document.querySelector('#error')
+            const loading = document.querySelector('#loading')
+            const received = document.querySelector('#received')
+
+            const form = document.querySelector('form')
+            const textInput = document.querySelector('input[type="text"]')
+            const submitButton = document.querySelector('input[type="submit"]')
+
+            const socket = new WebSocket('ws://127.0.0.1:8000')
+
+            socket.onopen = function (event) {
+                textInput.disabled = false
+                received.style.display = 'block'
+                loading.style.display = 'none'
+            }
+
+            socket.onclose = function (event) {
+                textInput.disabled = true
+                error.style.display = 'block'
+                received.style.display = 'none'
+                loading.style.display = 'none'
+            }
+
+            socket.onerror = function (event) {
+                error.style.display = 'block'
+                received.style.display = 'none'
+                loading.style.display = 'none'
+            }
+
+            socket.onmessage = function (event) {
+                const data = JSON.parse(event.data)
+
+                console.log(data)
+
+                if (data.type === 'Message') {
+                    const { timestamp, username, text } = data
+
+                    const time = new Date(timestamp).toLocaleTimeString()
+
+                    addMessage(
+                        `<em>(${time})</em> <strong>${username}:</strong> ${text}`
+                    )
+                } else if (data.type === 'ClientJoin') {
+                    const { username } = data
+
+                    addMessage(`<em>-> ${username} joined the chat!</em>`)
+                } else if (data.type === 'ClientLeave') {
+                    const { username } = data
+
+                    addMessage(`<em><- ${username} left the chat!</em>`)
+                }
+            }
+
+            function addMessage(html) {
+                const p = document.createElement('p')
+                p.innerHTML = html
+                received.appendChild(p)
+            }
+
+            form.addEventListener('submit', (evt) => {
+                evt.preventDefault()
+
+                socket.send(
+                    JSON.stringify({
+                        type: 'Message',
+                        text: textInput.value.trim(),
+                    })
+                )
+                textInput.value = ''
+                submitButton.disabled = true
+            })
+
+            const changeListener = (evt) => {
+                submitButton.disabled = evt.target.value.trim() === ''
+            }
+
+            textInput.addEventListener('change', changeListener)
+            textInput.addEventListener('input', changeListener)
+            textInput.addEventListener('focus', changeListener)
+            textInput.addEventListener('blur', changeListener)
+        </script>
+    </body>
+</html>
